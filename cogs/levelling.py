@@ -10,6 +10,8 @@ import io
 import aiohttp
 import random
 
+from config import DEFAULT_XP_PER_MESSAGE, DEFAULT_VC_XP_PER_MINUTE, MIN_MESSAGE_LENGTH, MAX_MESSAGES_PER_WINDOW, TIME_WINDOW
+
 class Levelling(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -26,11 +28,11 @@ class Levelling(commands.Cog):
         self.voice_tracking = {}  # {user_id_guild_id: start_time}
         
         # Default settings
-        self.default_xp_per_message = (15, 25)
-        self.default_vc_xp_per_minute = 1
-        self.min_message_length = 3
-        self.max_messages_per_window = 5
-        self.time_window = 10  # seconds
+        self.default_xp_per_message = DEFAULT_XP_PER_MESSAGE
+        self.default_vc_xp_per_minute = DEFAULT_VC_XP_PER_MINUTE
+        self.min_message_length = MIN_MESSAGE_LENGTH
+        self.max_messages_per_window = MAX_MESSAGES_PER_WINDOW
+        self.time_window = TIME_WINDOW  # seconds
         
         # Start background tasks
         self.bot.loop.create_task(self.voice_xp_loop())
