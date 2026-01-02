@@ -474,9 +474,9 @@ class Levelling(commands.Cog):
         
         # Load fonts
         try:
-            title_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 24)
-            normal_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 18)
-            small_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 14)
+            title_font = ImageFont.truetype("./data/arial.ttf", 24)
+            normal_font = ImageFont.truetype("./data/arial.ttf", 18)
+            small_font = ImageFont.truetype("./data/arial.ttf", 14)
         except:
             title_font = ImageFont.load_default()
             normal_font = ImageFont.load_default()
