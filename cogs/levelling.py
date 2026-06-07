@@ -585,14 +585,14 @@ class Levelling(commands.Cog):
             traceback.print_exc()
             
             # Fallback embed
-            text_xp_in_level, text_xp_needed = self.get_xp_in_level(text_xp, text_level)
-            voice_xp_in_level, voice_xp_needed = self.get_xp_in_level(voice_xp, voice_level)
+            text_xp_in_level, text_xp_needed = self.get_xp_in_level(xp_data['text_xp'], text_level)
+            voice_xp_in_level, voice_xp_needed = self.get_xp_in_level(xp_data['voice_xp'], voice_level)
             
             embed = discord.Embed(title=f"{member.display_name}'s Rank", color=discord.Color.blue())
             embed.add_field(name="Text Level", value=f"`Level {text_level}`\n`{text_xp_in_level}/{text_xp_needed} XP`", inline=True)
             embed.add_field(name="Voice Level", value=f"`Level {voice_level}`\n`{voice_xp_in_level}/{voice_xp_needed} XP`", inline=True)
-            embed.add_field(name="Total Text XP", value=f"`{text_xp}`", inline=False)
-            embed.add_field(name="Total Voice XP", value=f"`{voice_xp}`", inline=False)
+            embed.add_field(name="Total Text XP", value=f"`{xp_data['text_xp']}`", inline=False)
+            embed.add_field(name="Total Voice XP", value=f"`{xp_data['voice_xp']}`", inline=False)
             await interaction.response.send_message(embed=embed)
     
     @app_commands.command(name="top", description="View the leaderboard")
@@ -685,7 +685,6 @@ class Levelling(commands.Cog):
             await interaction.response.send_message("Please specify at least one XP value to remove.", ephemeral=True)
             return
         
-        old_data = self.get_user_xp(member.id, interaction.guild.id)
         new_text_xp, new_voice_xp = self.remove_xp(member.id, interaction.guild.id, text_xp, voice_xp)
         
         await interaction.response.send_message(
