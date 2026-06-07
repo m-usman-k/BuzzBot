@@ -799,68 +799,7 @@ class Levelling(commands.Cog):
                     ephemeral=True
                 )
     
-    @app_commands.command(name="help", description="View all available commands and their usage")
-    async def help_command(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title="BuzzBot Commands",
-            description="A comprehensive levelling system for Discord servers",
-            color=discord.Color.blue()
-        )
-        
-        user_commands = """`/rank [member]`
-View your or another member's level and XP with a visual rank card showing text and voice progress.
 
-`/top text [page]`
-View the text XP leaderboard. Shows 10 users per page. Default page is 1.
-
-`/top voice [page]`
-View the voice XP leaderboard. Shows 10 users per page. Default page is 1."""
-        
-        embed.add_field(name="User Commands", value=user_commands, inline=False)
-        
-        admin_commands = """`/add-xp <member> [text_xp] [voice_xp]`
-Manually add XP to a user. Specify at least one XP value.
-
-`/del-xp <member> [text_xp] [voice_xp]`
-Manually remove XP from a user. Specify at least one XP value.
-
-`/set-level-channel <channel>`
-Set the channel where level-up messages will be sent.
-
-`/add-role-reward <role> <text_level> <voice_level>`
-Add a role that will be automatically given when users reach the specified text and voice levels.
-
-`/remove-role-reward <role>`
-Remove a role from the reward system.
-
-`/list-role-rewards`
-View all configured role rewards for this server.
-
-`/fix-xp [member] [fix_all]`
-Fix negative XP values for a user or all users."""
-        
-        embed.add_field(name="Administrator Commands", value=admin_commands, inline=False)
-        
-        how_it_works = """**XP from Messages**
-Gain `15-25 XP` per eligible message. Multiple messages can give XP, allowing natural conversations. Messages must be `3+ characters` long.
-
-**Spam Protection**
-Up to `5 messages per 10 seconds` can give XP. This prevents rapid-fire spam while allowing normal chat. Messages beyond this limit won't award XP.
-
-**XP from Voice Chat**
-Gain `1 XP per minute` while in voice channels. Automatically tracked and awarded.
-
-**Leveling System**
-Text and Voice XP are separate with independent levels. Formula: `Level = (XP / 100) ^ 0.55` (ProBot style).
-
-**Role Rewards**
-Roles stack automatically. Reach both required text AND voice levels to unlock. Multiple roles can be active simultaneously."""
-        
-        embed.add_field(name="How It Works", value=how_it_works, inline=False)
-        
-        embed.set_footer(text="BuzzBot - ProBot-style Levelling System")
-        
-        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Levelling(bot))
