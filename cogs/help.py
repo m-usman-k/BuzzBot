@@ -11,23 +11,76 @@ COG_DISPLAY_INFO = {
         "title": "Levelling Commands",
         "emoji": "🏆",
         "description": "View rank, leaderboards, and configure XP rewards",
-        "summary": "A comprehensive levelling system for Discord servers"
+        "summary": "A comprehensive levelling system for Discord servers",
+        "setup": (
+            "**Setup Guide**\n"
+            "1. `/levels channel #channel`  sets the channel for level up messages.\n"
+            "2. `/levels rewards add @role text_level voice_level`  grants roles on level up.\n"
+            "3. XP is earned automatically from messages and voice activity.\n"
+            "4. `/rank` and `/top` let users track their progress."
+        )
     },
     "Welcome": {
         "title": "Welcome Commands",
         "emoji": "👋",
         "description": "Configure welcome channels and custom cards",
-        "summary": "A fully customisable welcome system with card generation"
+        "summary": "A fully customisable welcome system with card generation",
+        "setup": (
+            "**Setup Guide**\n"
+            "1. `/welcome channel #channel`  sets where welcome cards are sent.\n"
+            "2. *(optional)* `/welcome background ./path/to/image.png`  custom card background.\n"
+            "3. `/welcome test`  previews the card for yourself.\n"
+            "4. Welcome cards are sent automatically when new members join."
+        )
     },
     "AuditLog": {
         "title": "Audit Log Commands",
         "emoji": "📁",
         "description": "Configure moderator action logging channels",
-        "summary": "Detailed event logging for administrators and moderators"
+        "summary": "Detailed event logging for administrators and moderators",
+        "setup": (
+            "**Setup Guide**\n"
+            "1. `/logs channel audit logs #audit-logs`  logs server events.\n"
+            "2. `/logs channel mod logs #mod-logs`  logs moderation actions.\n"
+            "3. Both channels are optional, set only what you need.\n"
+            "4. Logging starts immediately with no further setup required."
+        )
+    },
+    "AutoMod": {
+        "title": "AutoMod Commands",
+        "emoji": "🛡️",
+        "description": "Configure spam and advertising filters",
+        "summary": "Automatic content filtering and moderation actions",
+        "setup": (
+            "**Setup Guide**\n"
+            "1. *(optional)* `/logs channel mod logs #mod-logs`  where filter actions are logged.\n"
+            "2. `/automod toggle channel_spam`  enables duplicate message spam detection.\n"
+            "3. `/automod toggle advertising`  enables Discord invite link filtering.\n"
+            "4. *(optional)* `/automod immunity channel_spam role:@role channel:#general`  excludes roles or channels."
+        )
     }
 }
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def flatten_commands(cmds: list) -> list[tuple[str, str]]:
+    """Flatten command groups into (signature, description) tuples."""
+    result = []
+    for cmd in sorted(cmds, key=lambda c: c.name):
+        if isinstance(cmd, app_commands.Group):
+            for sub in sorted(cmd.commands, key=lambda c: c.name):
+                if isinstance(sub, app_commands.Group):
+                    for leaf in sorted(sub.commands, key=lambda c: c.name):
+                        sig = f"/{cmd.name} {sub.name} {leaf.name}"
+                        result.append((sig, leaf.description or "No description"))
+                else:
+                    sig = f"/{cmd.name} {sub.name}"
+                    result.append((sig, sub.description or "No description"))
+        else:
+            sig = f"/{cmd.name}"
+            result.append((sig, cmd.description or "No description"))
+    return result
+
 
 def build_cog_map(bot: commands.Bot) -> dict[str, list]:
     """Return {cog_name: [app_commands]} for cogs containing other commands."""
@@ -35,7 +88,6 @@ def build_cog_map(bot: commands.Bot) -> dict[str, list]:
     for cog_name, cog in bot.cogs.items():
         cmds = cog.get_app_commands()
         if cmds:
-            # Exclude help cog/command to keep list clean
             filtered_cmds = [c for c in cmds if c.name != "help"]
             if filtered_cmds:
                 cog_map[cog_name] = filtered_cmds
@@ -51,22 +103,24 @@ def build_category_embed(category_name: str, cmds: list, guild: discord.Guild) -
 
     embed = discord.Embed(
         title=info["title"],
-        colour=0x3498DB  # Sleek blue border color
+        colour=0x3498DB
     )
 
+    parts = []
     if info["summary"]:
-        embed.description = f"{info['summary']}\n\n"
-    else:
-        embed.description = ""
+        parts.append(info["summary"])
 
-    lines = []
-    # Sort commands alphabetically by name
-    for cmd in sorted(cmds, key=lambda c: c.name):
-        sig = f"`/{cmd.name}`"
-        desc = cmd.description or "No description"
-        lines.append(f"{sig}\n└ {desc}")
+    if info.get("setup"):
+        parts.append(info["setup"])
 
-    embed.description += "\n\n".join(lines) if lines else "No commands available."
+    parts.append("")  # blank line before commands heading
+    parts.append("**Commands:**")
+
+    flat = flatten_commands(cmds)
+    lines = [f"`{sig}`\n  {desc}" for sig, desc in flat]
+    parts.append("\n\n".join(lines) if lines else "No commands available.")
+
+    embed.description = "\n\n".join(parts)
 
     if guild:
         embed.set_footer(
@@ -96,7 +150,7 @@ def build_home_embed(bot: commands.Bot, guild: discord.Guild | None) -> discord.
     features = []
     for name, info in COG_DISPLAY_INFO.items():
         emoji = info.get("emoji", "•")
-        features.append(f"{emoji} **{info['title'].replace(' Commands', '')}** — {info['summary']}")
+        features.append(f"{emoji} **{info['title'].replace(' Commands', '')}**  {info['summary']}")
 
     if features:
         embed.add_field(

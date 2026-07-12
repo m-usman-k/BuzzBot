@@ -565,6 +565,155 @@ class Levelling(commands.Cog):
         
         return img_bytes
     
+    levels = app_commands.Group(name="levels", description="Level and XP management")
+
+    @levels.command(name="channel", description="Set the channel for level-up messages")
+    @app_commands.describe(channel="The channel to send level-up messages to")
+    @app_commands.default_permissions(administrator=True)
+    async def levels_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        self.set_guild_setting(interaction.guild.id, 'level_channel_id', channel.id)
+        await interaction.response.send_message(f"Level-up messages will now be sent to {channel.mention}")
+
+    rewards = app_commands.Group(name="rewards", description="Manage level role rewards", parent=levels)
+
+    @rewards.command(name="add", description="Add a role reward for reaching certain levels")
+    @app_commands.describe(role="The role to give", text_level="Required text level", voice_level="Required voice level")
+    @app_commands.default_permissions(administrator=True)
+    async def rewards_add(self, interaction: discord.Interaction, role: discord.Role,
+                          text_level: int, voice_level: int):
+        if text_level < 0 or voice_level < 0:
+            await interaction.response.send_message("Levels must be 0 or greater.", ephemeral=True)
+            return
+
+        data = self.load_json(self.rewards_file)
+        guild_id_str = str(interaction.guild.id)
+
+        if guild_id_str not in data:
+            data[guild_id_str] = {}
+
+        data[guild_id_str][str(role.id)] = {
+            'text_level': text_level,
+            'voice_level': voice_level
+        }
+
+        self.save_json(self.rewards_file, data)
+
+        await interaction.response.send_message(
+            f"Added role reward: {role.mention} will be given at `Text Level {text_level}` and `Voice Level {voice_level}`"
+        )
+
+    @rewards.command(name="remove", description="Remove a role reward")
+    @app_commands.describe(role="The role to remove from rewards")
+    @app_commands.default_permissions(administrator=True)
+    async def rewards_remove(self, interaction: discord.Interaction, role: discord.Role):
+        data = self.load_json(self.rewards_file)
+        guild_id_str = str(interaction.guild.id)
+
+        if guild_id_str in data and str(role.id) in data[guild_id_str]:
+            del data[guild_id_str][str(role.id)]
+            self.save_json(self.rewards_file, data)
+            await interaction.response.send_message(f"Removed role reward for {role.mention}")
+        else:
+            await interaction.response.send_message(f"No role reward found for {role.mention}.", ephemeral=True)
+
+    @rewards.command(name="list", description="List all role rewards")
+    async def rewards_list(self, interaction: discord.Interaction):
+        data = self.load_json(self.rewards_file)
+        guild_id_str = str(interaction.guild.id)
+
+        if guild_id_str not in data or not data[guild_id_str]:
+            await interaction.response.send_message("No role rewards configured.", ephemeral=True)
+            return
+
+        embed = discord.Embed(title="Role Rewards", color=discord.Color.blue())
+        description = ""
+
+        for role_id_str, reward_data in data[guild_id_str].items():
+            role = interaction.guild.get_role(int(role_id_str))
+            role_name = role.mention if role else f"Unknown Role ({role_id_str})"
+            text_level = reward_data.get('text_level', 0)
+            voice_level = reward_data.get('voice_level', 0)
+            description += f"{role_name} - `Text Level {text_level}`, `Voice Level {voice_level}`\n"
+
+        embed.description = description
+        await interaction.response.send_message(embed=embed)
+
+    xp = app_commands.Group(name="xp", description="Manage user XP", parent=levels)
+
+    @xp.command(name="add", description="Add XP to a user")
+    @app_commands.describe(member="The user to add XP to", text_xp="Text XP to add", voice_xp="Voice XP to add")
+    @app_commands.default_permissions(administrator=True)
+    async def xp_add(self, interaction: discord.Interaction, member: discord.Member,
+                     text_xp: int = 0, voice_xp: int = 0):
+        if text_xp == 0 and voice_xp == 0:
+            await interaction.response.send_message("Please specify at least one XP value to add.", ephemeral=True)
+            return
+
+        old_data = self.get_user_xp(member.id, interaction.guild.id)
+        new_text_xp, new_voice_xp = self.add_xp(member.id, interaction.guild.id, text_xp, voice_xp)
+
+        await self.check_level_up(member, interaction.guild,
+                                 old_data['text_xp'], new_text_xp,
+                                 old_data['voice_xp'], new_voice_xp)
+
+        await interaction.response.send_message(
+            f"Added `{text_xp}` text XP and `{voice_xp}` voice XP to {member.mention}.\n"
+            f"New totals: `{new_text_xp}` text XP, `{new_voice_xp}` voice XP"
+        )
+
+    @xp.command(name="remove", description="Remove XP from a user")
+    @app_commands.describe(member="The user to remove XP from", text_xp="Text XP to remove", voice_xp="Voice XP to remove")
+    @app_commands.default_permissions(administrator=True)
+    async def xp_remove(self, interaction: discord.Interaction, member: discord.Member,
+                        text_xp: int = 0, voice_xp: int = 0):
+        if text_xp == 0 and voice_xp == 0:
+            await interaction.response.send_message("Please specify at least one XP value to remove.", ephemeral=True)
+            return
+
+        new_text_xp, new_voice_xp = self.remove_xp(member.id, interaction.guild.id, text_xp, voice_xp)
+
+        await interaction.response.send_message(
+            f"Removed `{text_xp}` text XP and `{voice_xp}` voice XP from {member.mention}.\n"
+            f"New totals: `{new_text_xp}` text XP, `{new_voice_xp}` voice XP"
+        )
+
+    @xp.command(name="fix", description="Fix negative XP values for a user or all users")
+    @app_commands.describe(member="The user to fix (leave empty to fix all users)", fix_all="Fix all users with negative XP")
+    @app_commands.default_permissions(administrator=True)
+    async def xp_fix(self, interaction: discord.Interaction, member: discord.Member = None, fix_all: bool = False):
+        if fix_all or member is None:
+            self.fix_all_negative_xp()
+            await interaction.response.send_message("Fixed all negative XP values in the database.")
+        else:
+            old_data = self.get_user_xp(member.id, interaction.guild.id)
+            new_text_xp = max(0, old_data['text_xp'])
+            new_voice_xp = max(0, old_data['voice_xp'])
+
+            if old_data['text_xp'] < 0 or old_data['voice_xp'] < 0:
+                data = self.load_json(self.xp_file)
+                guild_id_str = str(interaction.guild.id)
+                user_id_str = str(member.id)
+
+                if guild_id_str not in data:
+                    data[guild_id_str] = {}
+                if user_id_str not in data[guild_id_str]:
+                    data[guild_id_str][user_id_str] = {}
+
+                data[guild_id_str][user_id_str]['text_xp'] = new_text_xp
+                data[guild_id_str][user_id_str]['voice_xp'] = new_voice_xp
+                self.save_json(self.xp_file, data)
+
+                await interaction.response.send_message(
+                    f"Fixed {member.mention}'s XP:\n"
+                    f"Text XP: `{old_data['text_xp']}` → `{new_text_xp}`\n"
+                    f"Voice XP: `{old_data['voice_xp']}` → `{new_voice_xp}`"
+                )
+            else:
+                await interaction.response.send_message(
+                    f"{member.mention}'s XP is already valid: `{new_text_xp}` text XP, `{new_voice_xp}` voice XP",
+                    ephemeral=True
+                )
+
     @app_commands.command(name="rank", description="View your level and XP")
     async def rank(self, interaction: discord.Interaction, member: discord.Member = None):
         if member is None:
@@ -655,148 +804,6 @@ class Levelling(commands.Cog):
         embed.description = description
         await interaction.response.send_message(embed=embed)
     
-    @app_commands.command(name="add-xp", description="Add XP to a user")
-    @app_commands.describe(member="The user to add XP to", text_xp="Text XP to add", voice_xp="Voice XP to add")
-    @app_commands.default_permissions(administrator=True)
-    async def add_xp_cmd(self, interaction: discord.Interaction, member: discord.Member,
-                        text_xp: int = 0, voice_xp: int = 0):
-        if text_xp == 0 and voice_xp == 0:
-            await interaction.response.send_message("Please specify at least one XP value to add.", ephemeral=True)
-            return
-        
-        old_data = self.get_user_xp(member.id, interaction.guild.id)
-        new_text_xp, new_voice_xp = self.add_xp(member.id, interaction.guild.id, text_xp, voice_xp)
-        
-        await self.check_level_up(member, interaction.guild,
-                                 old_data['text_xp'], new_text_xp,
-                                 old_data['voice_xp'], new_voice_xp)
-        
-        await interaction.response.send_message(
-            f"Added `{text_xp}` text XP and `{voice_xp}` voice XP to {member.mention}.\n"
-            f"New totals: `{new_text_xp}` text XP, `{new_voice_xp}` voice XP"
-        )
-    
-    @app_commands.command(name="del-xp", description="Remove XP from a user")
-    @app_commands.describe(member="The user to remove XP from", text_xp="Text XP to remove", voice_xp="Voice XP to remove")
-    @app_commands.default_permissions(administrator=True)
-    async def del_xp_cmd(self, interaction: discord.Interaction, member: discord.Member,
-                        text_xp: int = 0, voice_xp: int = 0):
-        if text_xp == 0 and voice_xp == 0:
-            await interaction.response.send_message("Please specify at least one XP value to remove.", ephemeral=True)
-            return
-        
-        new_text_xp, new_voice_xp = self.remove_xp(member.id, interaction.guild.id, text_xp, voice_xp)
-        
-        await interaction.response.send_message(
-            f"Removed `{text_xp}` text XP and `{voice_xp}` voice XP from {member.mention}.\n"
-            f"New totals: `{new_text_xp}` text XP, `{new_voice_xp}` voice XP"
-        )
-    
-    @app_commands.command(name="set-level-channel", description="Set the channel for level-up messages")
-    @app_commands.describe(channel="The channel to send level-up messages to")
-    @app_commands.default_permissions(administrator=True)
-    async def set_level_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        self.set_guild_setting(interaction.guild.id, 'level_channel_id', channel.id)
-        await interaction.response.send_message(f"Level-up messages will now be sent to {channel.mention}")
-    
-    @app_commands.command(name="add-role-reward", description="Add a role reward for reaching certain levels")
-    @app_commands.describe(role="The role to give", text_level="Required text level", voice_level="Required voice level")
-    @app_commands.default_permissions(administrator=True)
-    async def add_role_reward(self, interaction: discord.Interaction, role: discord.Role,
-                             text_level: int, voice_level: int):
-        if text_level < 0 or voice_level < 0:
-            await interaction.response.send_message("Levels must be 0 or greater.", ephemeral=True)
-            return
-        
-        data = self.load_json(self.rewards_file)
-        guild_id_str = str(interaction.guild.id)
-        
-        if guild_id_str not in data:
-            data[guild_id_str] = {}
-        
-        data[guild_id_str][str(role.id)] = {
-            'text_level': text_level,
-            'voice_level': voice_level
-        }
-        
-        self.save_json(self.rewards_file, data)
-        
-        await interaction.response.send_message(
-            f"Added role reward: {role.mention} will be given at `Text Level {text_level}` and `Voice Level {voice_level}`"
-        )
-    
-    @app_commands.command(name="remove-role-reward", description="Remove a role reward")
-    @app_commands.describe(role="The role to remove from rewards")
-    @app_commands.default_permissions(administrator=True)
-    async def remove_role_reward(self, interaction: discord.Interaction, role: discord.Role):
-        data = self.load_json(self.rewards_file)
-        guild_id_str = str(interaction.guild.id)
-        
-        if guild_id_str in data and str(role.id) in data[guild_id_str]:
-            del data[guild_id_str][str(role.id)]
-            self.save_json(self.rewards_file, data)
-            await interaction.response.send_message(f"Removed role reward for {role.mention}")
-        else:
-            await interaction.response.send_message(f"No role reward found for {role.mention}.", ephemeral=True)
-    
-    @app_commands.command(name="list-role-rewards", description="List all role rewards")
-    async def list_role_rewards(self, interaction: discord.Interaction):
-        data = self.load_json(self.rewards_file)
-        guild_id_str = str(interaction.guild.id)
-        
-        if guild_id_str not in data or not data[guild_id_str]:
-            await interaction.response.send_message("No role rewards configured.", ephemeral=True)
-            return
-        
-        embed = discord.Embed(title="Role Rewards", color=discord.Color.blue())
-        description = ""
-        
-        for role_id_str, reward_data in data[guild_id_str].items():
-            role = interaction.guild.get_role(int(role_id_str))
-            role_name = role.mention if role else f"Unknown Role ({role_id_str})"
-            text_level = reward_data.get('text_level', 0)
-            voice_level = reward_data.get('voice_level', 0)
-            description += f"{role_name} - `Text Level {text_level}`, `Voice Level {voice_level}`\n"
-        
-        embed.description = description
-        await interaction.response.send_message(embed=embed)
-    
-    @app_commands.command(name="fix-xp", description="Fix negative XP values for a user or all users")
-    @app_commands.describe(member="The user to fix (leave empty to fix all users)", fix_all="Fix all users with negative XP")
-    @app_commands.default_permissions(administrator=True)
-    async def fix_xp(self, interaction: discord.Interaction, member: discord.Member = None, fix_all: bool = False):
-        if fix_all or member is None:
-            self.fix_all_negative_xp()
-            await interaction.response.send_message("Fixed all negative XP values in the database.")
-        else:
-            old_data = self.get_user_xp(member.id, interaction.guild.id)
-            new_text_xp = max(0, old_data['text_xp'])
-            new_voice_xp = max(0, old_data['voice_xp'])
-            
-            if old_data['text_xp'] < 0 or old_data['voice_xp'] < 0:
-                data = self.load_json(self.xp_file)
-                guild_id_str = str(interaction.guild.id)
-                user_id_str = str(member.id)
-                
-                if guild_id_str not in data:
-                    data[guild_id_str] = {}
-                if user_id_str not in data[guild_id_str]:
-                    data[guild_id_str][user_id_str] = {}
-                
-                data[guild_id_str][user_id_str]['text_xp'] = new_text_xp
-                data[guild_id_str][user_id_str]['voice_xp'] = new_voice_xp
-                self.save_json(self.xp_file, data)
-                
-                await interaction.response.send_message(
-                    f"Fixed {member.mention}'s XP:\n"
-                    f"Text XP: `{old_data['text_xp']}` → `{new_text_xp}`\n"
-                    f"Voice XP: `{old_data['voice_xp']}` → `{new_voice_xp}`"
-                )
-            else:
-                await interaction.response.send_message(
-                    f"{member.mention}'s XP is already valid: `{new_text_xp}` text XP, `{new_voice_xp}` voice XP",
-                    ephemeral=True
-                )
     
 
 

@@ -18,6 +18,7 @@ COGS = [
     'cogs.welcome',
     'cogs.audit_log',
     'cogs.help',
+    'cogs.automod',
 ]
 
 @bot.event

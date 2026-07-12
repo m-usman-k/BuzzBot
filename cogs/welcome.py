@@ -402,13 +402,12 @@ class Welcome(commands.Cog):
     #  Slash commands                                                     #
     # ------------------------------------------------------------------ #
 
-    @app_commands.command(
-        name='set-welcome-channel',
-        description='Set the channel where welcome messages are sent',
-    )
+    welcome = app_commands.Group(name='welcome', description='Welcome system configuration')
+
+    @welcome.command(name='channel', description='Set the channel where welcome messages are sent')
     @app_commands.describe(channel='Channel to send welcome messages to')
     @app_commands.default_permissions(administrator=True)
-    async def set_welcome_channel(
+    async def welcome_channel(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ):
         self.set_welcome_setting(interaction.guild.id, 'channel_id', channel.id)
@@ -416,15 +415,12 @@ class Welcome(commands.Cog):
             f'✅ Welcome messages will now be sent to {channel.mention}'
         )
 
-    @app_commands.command(
-        name='set-welcome-background',
-        description='Set a custom background image path for welcome cards',
-    )
+    @welcome.command(name='background', description='Set a custom background image for welcome cards')
     @app_commands.describe(
-        path='File path to the background image (leave blank to reset to the config default)'
+        path='File path to the background image (leave blank to reset to default)'
     )
     @app_commands.default_permissions(administrator=True)
-    async def set_welcome_background(
+    async def welcome_background(
         self, interaction: discord.Interaction, path: str = None
     ):
         bg_path = path if path else WELCOME_BACKGROUND_PATH
@@ -446,13 +442,10 @@ class Welcome(commands.Cog):
                 f'✅ Welcome background reset to default (`{WELCOME_BACKGROUND_PATH}`)'
             )
 
-    @app_commands.command(
-        name='test-welcome',
-        description='Preview the welcome message for a member',
-    )
+    @welcome.command(name='test', description='Preview the welcome message for a member')
     @app_commands.describe(member='Member to use as the preview subject (defaults to you)')
     @app_commands.default_permissions(administrator=True)
-    async def test_welcome(
+    async def welcome_test(
         self, interaction: discord.Interaction, member: discord.Member = None
     ):
         target   = member or interaction.user
@@ -460,7 +453,7 @@ class Welcome(commands.Cog):
 
         if not settings.get('channel_id'):
             await interaction.response.send_message(
-                '❌ No welcome channel set. Use `/set-welcome-channel` first.',
+                '❌ No welcome channel set. Use `/welcome channel` first.',
                 ephemeral=True,
             )
             return

@@ -49,7 +49,7 @@ class AuditLog(commands.Cog):
         guild_id_str = str(guild_id)
         if guild_id_str in data:
             return data[guild_id_str]
-        return {'channel_id': None}
+        return {'channel_id': None, 'mod_channel_id': None}
 
     def set_audit_setting(self, guild_id, key, value):
         """Set a single audit log setting for a guild."""
@@ -64,10 +64,11 @@ class AuditLog(commands.Cog):
     #  Shared utilities                                                   #
     # ------------------------------------------------------------------ #
 
-    async def send_log(self, guild: discord.Guild, embed: discord.Embed):
-        """Send an embed to the guild's configured audit log channel."""
-        settings   = self.get_audit_settings(guild.id)
-        channel_id = settings.get('channel_id')
+    async def send_log(self, guild: discord.Guild, embed: discord.Embed, log_type: str = 'audit'):
+        """Send an embed to the guild's configured audit or mod log channel."""
+        settings = self.get_audit_settings(guild.id)
+        key = 'mod_channel_id' if log_type == 'mod' else 'channel_id'
+        channel_id = settings.get(key)
         if not channel_id:
             return
         channel = guild.get_channel(channel_id)
@@ -521,18 +522,28 @@ class AuditLog(commands.Cog):
     #  SLASH COMMANDS                                                     #
     # ------------------------------------------------------------------ #
 
-    @app_commands.command(
-        name='set-audit-channel',
-        description='Set the channel where audit log messages are sent',
+    logs = app_commands.Group(name='logs', description='Configure logging channels')
+
+    @logs.command(name='channel', description='Set the channel for audit or mod logs')
+    @app_commands.describe(
+        log_type='Which log channel to configure',
+        channel='The channel to send logs to'
     )
-    @app_commands.describe(channel='Channel to send audit log messages to')
+    @app_commands.choices(log_type=[
+        app_commands.Choice(name='audit logs', value='audit'),
+        app_commands.Choice(name='mod logs', value='mod'),
+    ])
     @app_commands.default_permissions(administrator=True)
-    async def set_audit_channel(
-        self, interaction: discord.Interaction, channel: discord.TextChannel
+    async def logs_channel(
+        self, interaction: discord.Interaction,
+        log_type: app_commands.Choice[str],
+        channel: discord.TextChannel
     ):
-        self.set_audit_setting(interaction.guild.id, 'channel_id', channel.id)
+        key = 'mod_channel_id' if log_type.value == 'mod' else 'channel_id'
+        label = 'Mod log' if log_type.value == 'mod' else 'Audit log'
+        self.set_audit_setting(interaction.guild.id, key, channel.id)
         await interaction.response.send_message(
-            f'✅ Audit log messages will now be sent to {channel.mention}'
+            f'✅ {label} messages will now be sent to {channel.mention}'
         )
 
 
