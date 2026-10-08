@@ -8,3 +8,5 @@ __pycache__
 */__pycache__
 */__pycache__/
 cogs/__pycache__/
+# Built distributable (rebuild with: python .dist/build.py)
+.dist/*.zip

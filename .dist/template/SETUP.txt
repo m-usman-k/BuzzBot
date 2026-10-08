@@ -1,0 +1,58 @@
+BuzzBot - Setup Guide
+=====================
+
+You need Python 3.10 or newer: https://www.python.org/downloads/
+(On Windows, tick "Add Python to PATH" in the installer.)
+
+
+1. Create the bot on Discord
+----------------------------
+  a. Go to https://discord.com/developers/applications and click "New Application".
+  b. Open the "Bot" tab, click "Reset Token" and copy the token. Keep it secret.
+  c. On the same "Bot" tab, turn ON these Privileged Gateway Intents:
+       - Server Members Intent
+       - Message Content Intent
+  d. Open "OAuth2" > "URL Generator":
+       Scopes:      bot, applications.commands
+       Permissions: Administrator is easiest. Otherwise pick:
+                    Send Messages, Embed Links, Attach Files, Read Message History,
+                    Manage Roles, Manage Messages, Moderate Members,
+                    View Audit Log, Connect
+  e. Open the generated link and add the bot to your server.
+  f. In Server Settings > Roles, drag the bot's role ABOVE any roles it should
+     hand out as level rewards.
+
+
+2. Add your token
+-----------------
+  Rename ".env.example" to ".env", open it in a text editor and paste your token
+  after BOT_TOKEN=  (the start scripts below do the renaming for you).
+
+  VIRUSTOTAL_API_KEY is optional; it powers the malicious link filter.
+
+
+3. Start the bot
+----------------
+  Windows:      double-click start.bat
+  Mac / Linux:  open a terminal in this folder and run  ./start.sh
+
+  The first start installs everything it needs, which takes a minute.
+  When you see "... has logged in!" the bot is online. Keep the window open;
+  closing it stops the bot.
+
+  Prefer doing it by hand?
+      python -m venv venv
+      venv\Scripts\activate        (Mac/Linux: source venv/bin/activate)
+      pip install -r requirements.txt
+      python main.py
+
+
+4. Use it
+---------
+  Type /help in your server to see every command. Slash commands can take a
+  few minutes to show up the very first time.
+
+  Settings you can tweak live in config.py. Banned words go in
+  data/banned_words.txt and trusted link domains in data/link_whitelist.txt.
+  Your server's data (XP, settings) is stored in the data folder as .json files,
+  so back that folder up if you move the bot.
