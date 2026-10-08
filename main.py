@@ -19,6 +19,7 @@ COGS = [
     'cogs.audit_log',
     'cogs.help',
     'cogs.automod',
+    'cogs.youtube',
 ]
 
 @bot.event

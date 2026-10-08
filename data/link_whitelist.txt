@@ -1,0 +1,51 @@
+# BuzzBot malicious link filter whitelist
+#
+# Links to these domains are never sent to VirusTotal. One domain per line.
+# Subdomains are included automatically, so "youtube.com" also covers
+# www.youtube.com, m.youtube.com and music.youtube.com.
+#
+# Changes are picked up automatically within a minute, no restart needed.
+
+# Discord
+discord.com
+discord.gg
+discordapp.com
+discordapp.net
+discord.media
+
+# GIFs and images
+tenor.com
+giphy.com
+imgur.com
+gyazo.com
+
+# Video and streaming
+youtube.com
+youtu.be
+twitch.tv
+kick.com
+
+# Music
+spotify.com
+soundcloud.com
+music.apple.com
+
+# Social media
+twitter.com
+x.com
+fxtwitter.com
+vxtwitter.com
+reddit.com
+redd.it
+instagram.com
+tiktok.com
+facebook.com
+bsky.app
+
+# General
+google.com
+wikipedia.org
+github.com
+steampowered.com
+steamcommunity.com
+roblox.com

@@ -49,14 +49,27 @@ COG_DISPLAY_INFO = {
     "AutoMod": {
         "title": "AutoMod Commands",
         "emoji": "🛡️",
-        "description": "Configure spam and advertising filters",
+        "description": "Configure spam, language and link filters",
         "summary": "Automatic content filtering and moderation actions",
         "setup": (
             "**Setup Guide**\n"
             "1. *(optional)* `/logs channel mod logs #mod-logs`  where filter actions are logged.\n"
-            "2. `/automod toggle channel_spam`  enables duplicate message spam detection.\n"
-            "3. `/automod toggle advertising`  enables Discord invite link filtering.\n"
-            "4. *(optional)* `/automod immunity channel_spam role:@role channel:#general`  excludes roles or channels."
+            "2. `/automod status`  opens the settings panel. Pick a filter to enable it, change its limits and timeouts, and choose immune roles and channels.\n"
+            "3. Language filter: add banned words to `data/banned_words.txt`.\n"
+            "4. Malicious links: add `VIRUSTOTAL_API_KEY` to `.env`, pick a report channel in the panel and edit `data/link_whitelist.txt` if needed."
+        )
+    },
+    "YouTube": {
+        "title": "YouTube Commands",
+        "emoji": "📺",
+        "description": "Upload notifications for YouTube channels",
+        "summary": "Posts a message and pings a role whenever a YouTube channel uploads",
+        "setup": (
+            "**Setup Guide**\n"
+            "1. `/youtube setup #channel @role`  sets where notifications go and who gets pinged.\n"
+            "2. `/youtube subscribe @handle`  follows a YouTube channel (handle, link or channel ID).\n"
+            "3. `/youtube test`  posts the latest upload without pinging, to check it looks right.\n"
+            "4. New uploads are checked for every few minutes automatically."
         )
     }
 }

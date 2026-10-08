@@ -1,0 +1,16 @@
+# BuzzBot language filter wordlist
+#
+# One word or phrase per line. Lines starting with # are ignored.
+# Matching ignores case, accents, l33tspeak (he11o, h3ll0, @, $), dots or spaces between
+# letters (h.e.l.l.o, h e l l o), stretched letters (heeelllooo) and lookalike letters
+# from other alphabets.
+#
+#   word      matches the whole word only, so "ass" won't catch "class" or "grass"
+#   word*     matches words starting with "word"
+#   *word     matches words ending with "word"
+#   *word*    matches "word" anywhere, even inside other words (can catch innocent words!)
+#   !word     never flags this exact word, useful for fixing false positives from wildcards
+#
+# Changes are picked up automatically within a minute, no restart needed.
+# Add your words below this line.
+
