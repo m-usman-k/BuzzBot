@@ -998,7 +998,7 @@ class AutoMod(commands.Cog):
         embed = discord.Embed(
             title="AutoMod Configuration",
             colour=0x3498DB,
-            description="Pick a filter from the menu below to change its settings.",
+            description="Pick a filter from the first menu to turn it on and change its settings, and choose where actions are logged with the second.",
             timestamp=datetime.now(timezone.utc),
         )
         for key, meta in FILTERS.items():
@@ -1017,7 +1017,7 @@ class AutoMod(commands.Cog):
         warnings = self.permission_warnings(guild)
         audit = self.load_json(self.audit_settings_file).get(str(guild.id), {})
         if not audit.get('mod_channel_id'):
-            warnings.append("No mod log channel is set, so AutoMod actions aren't logged. Use `/logs channel mod logs`.")
+            warnings.append("No mod log channel is set, so AutoMod actions aren't logged. Pick one in the menu below.")
         if warnings:
             embed.add_field(name="⚠️ Warnings", value='\n'.join(warnings), inline=False)
         return embed
@@ -1230,6 +1230,25 @@ class ReportChannelSelect(discord.ui.ChannelSelect):
         await self.panel.refresh(interaction)
 
 
+class ModLogChannelSelect(discord.ui.ChannelSelect):
+    def __init__(self, panel):
+        channel_id = panel.cog.load_json(panel.cog.audit_settings_file).get(str(panel.guild.id), {}).get('mod_channel_id')
+        channel = panel.guild.get_channel(channel_id) if channel_id else None
+        super().__init__(
+            placeholder="Mod log channel (not set)", min_values=0, max_values=1,
+            channel_types=[discord.ChannelType.text, discord.ChannelType.news],
+            default_values=[channel] if channel else [], row=1,
+        )
+        self.panel = panel
+
+    async def callback(self, interaction: discord.Interaction):
+        # Same file and key the /logs channel command uses
+        data = self.panel.cog.load_json(self.panel.cog.audit_settings_file)
+        data.setdefault(str(self.panel.guild.id), {})['mod_channel_id'] = self.values[0].id if self.values else None
+        self.panel.cog.save_json(self.panel.cog.audit_settings_file, data)
+        await self.panel.refresh(interaction)
+
+
 class SettingsModal(discord.ui.Modal):
     def __init__(self, panel):
         meta = FILTERS[panel.page]
@@ -1286,6 +1305,7 @@ class AutoModPanel(discord.ui.View):
         self.clear_items()
         self.add_item(FilterSelect(self))
         if self.page == OVERVIEW_PAGE:
+            self.add_item(ModLogChannelSelect(self))
             return
 
         filter_cfg = self.cog.get_filter(self.guild.id, self.page)

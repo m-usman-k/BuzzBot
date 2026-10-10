@@ -20,6 +20,7 @@ COGS = [
     'cogs.help',
     'cogs.automod',
     'cogs.youtube',
+    'cogs.moderation',
 ]
 
 @bot.event

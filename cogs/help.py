@@ -41,7 +41,7 @@ COG_DISPLAY_INFO = {
         "setup": (
             "**Setup Guide**\n"
             "1. `/logs channel audit logs #audit-logs`  logs server events.\n"
-            "2. `/logs channel mod logs #mod-logs`  logs moderation actions.\n"
+            "2. `/logs channel mod logs #mod-logs`  logs AutoMod actions, timeouts, kicks and bans.\n"
             "3. Both channels are optional, set only what you need.\n"
             "4. Logging starts immediately with no further setup required."
         )
@@ -53,10 +53,23 @@ COG_DISPLAY_INFO = {
         "summary": "Automatic content filtering and moderation actions",
         "setup": (
             "**Setup Guide**\n"
-            "1. *(optional)* `/logs channel mod logs #mod-logs`  where filter actions are logged.\n"
-            "2. `/automod status`  opens the settings panel. Pick a filter to enable it, change its limits and timeouts, and choose immune roles and channels.\n"
+            "1. `/automod status`  opens the settings panel. Everything is set from there: pick a filter to enable it, change its limits and timeouts, and choose immune roles and channels.\n"
+            "2. Pick a mod log channel on the panel's front page so you can see what AutoMod does.\n"
             "3. Language filter: add banned words to `data/banned_words.txt`.\n"
             "4. Malicious links: add `VIRUSTOTAL_API_KEY` to `.env`, pick a report channel in the panel and edit `data/link_whitelist.txt` if needed."
+        )
+    },
+    "Moderation": {
+        "title": "Moderation Commands",
+        "emoji": "📋",
+        "description": "Look up a user's punishment history",
+        "summary": "Keeps a record of every timeout, kick and ban",
+        "setup": (
+            "**Setup Guide**\n"
+            "1. Give the bot the `View Audit Log` permission.\n"
+            "2. Punishments are recorded automatically, whether a moderator or AutoMod hands them out.\n"
+            "3. `/user @member`  shows their history, newest first, with buttons to page through it.\n"
+            "4. On first start the bot imports the last 45 days of punishments from the audit log."
         )
     },
     "YouTube": {

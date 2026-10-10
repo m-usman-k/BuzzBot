@@ -65,18 +65,23 @@ class AuditLog(commands.Cog):
     # ------------------------------------------------------------------ #
 
     async def send_log(self, guild: discord.Guild, embed: discord.Embed, log_type: str = 'audit'):
-        """Send an embed to the guild's configured audit or mod log channel."""
+        """Send an embed to the guild's audit log channel, mod log channel, or both (log_type='both')."""
         settings = self.get_audit_settings(guild.id)
-        key = 'mod_channel_id' if log_type == 'mod' else 'channel_id'
-        channel_id = settings.get(key)
-        if not channel_id:
-            return
-        channel = guild.get_channel(channel_id)
-        if channel:
-            try:
-                await channel.send(embed=embed)
-            except (discord.Forbidden, discord.HTTPException):
-                pass
+        keys = {'audit': ['channel_id'], 'mod': ['mod_channel_id'], 'both': ['channel_id', 'mod_channel_id']}[log_type]
+        # dict.fromkeys drops duplicates in case both logs point at the same channel
+        for channel_id in dict.fromkeys(settings.get(key) for key in keys):
+            channel = guild.get_channel(channel_id) if channel_id else None
+            if channel:
+                try:
+                    await channel.send(embed=embed)
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+
+    def moderation_log_type(self, entry) -> str:
+        """Punishments go to both logs, except AutoMod's own, which AutoMod already posts to the mod log."""
+        if entry and entry.user and entry.user.id == self.bot.user.id:
+            return 'audit'
+        return 'both'
 
     async def fetch_audit_entry(
         self,
@@ -250,7 +255,7 @@ class AuditLog(commands.Cog):
 
             embed.set_footer(text=f'User ID: {member.id}')
 
-        await self.send_log(member.guild, embed)
+        await self.send_log(member.guild, embed, self.moderation_log_type(kick_entry) if is_recent_kick else 'audit')
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
@@ -272,7 +277,7 @@ class AuditLog(commands.Cog):
         else:
             embed.set_footer(text=f'User ID: {user.id}')
 
-        await self.send_log(guild, embed)
+        await self.send_log(guild, embed, self.moderation_log_type(entry))
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
@@ -294,7 +299,7 @@ class AuditLog(commands.Cog):
         else:
             embed.set_footer(text=f'User ID: {user.id}')
 
-        await self.send_log(guild, embed)
+        await self.send_log(guild, embed, self.moderation_log_type(entry))
 
     # ------------------------------------------------------------------ #
     #  MEMBER UPDATE  (roles · nickname · timeout)                        #
@@ -395,7 +400,7 @@ class AuditLog(commands.Cog):
                     embed.add_field(name='Removed By', value=entry.user.mention, inline=True)
                 embed.set_footer(text=f'User ID: {after.id}')
 
-            await self.send_log(after.guild, embed)
+            await self.send_log(after.guild, embed, self.moderation_log_type(entry if self.is_recent(entry) else None))
 
     # ------------------------------------------------------------------ #
     #  USER UPDATE  (global username · avatar)                           #
