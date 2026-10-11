@@ -144,8 +144,6 @@ FILTERS = {
     },
 }
 
-FILTER_CHOICES = [app_commands.Choice(name=meta['label'], value=key) for key, meta in FILTERS.items()]
-
 
 def find_repeated_content(text, max_repeats):
     """Return (repeated text, count) if a chunk of text is repeated back to back at least max_repeats times."""
@@ -351,10 +349,6 @@ class AutoMod(commands.Cog):
     def set_filter_setting(self, guild_id, filter_name, key, value):
         self.get_filter(guild_id, filter_name)[key] = value
         self.save_json(self.settings_file, self.settings)
-
-    async def on_filter_changed(self, guild, filter_name):
-        if filter_name == 'language':
-            await self.sync_native_rule(guild)
 
     def is_immune(self, member, channel, filter_cfg):
         immune_roles = filter_cfg.get('immune_roles')
@@ -1074,84 +1068,12 @@ class AutoMod(commands.Cog):
     #  Commands                                                           #
     # ------------------------------------------------------------------ #
 
-    automod = app_commands.Group(name='automod', description='Configure AutoMod filters')
-
-    @automod.command(name='status', description='View and change AutoMod settings')
+    @app_commands.command(name='automod', description='View and change AutoMod settings')
     @app_commands.default_permissions(administrator=True)
-    async def automod_status(self, interaction: discord.Interaction):
+    @app_commands.guild_only()
+    async def automod_panel(self, interaction: discord.Interaction):
         view = AutoModPanel(self, interaction.guild)
         await interaction.response.send_message(embed=view.build_embed(), view=view, ephemeral=True)
-
-    @automod.command(name='toggle', description='Enable or disable an AutoMod filter')
-    @app_commands.describe(filter='Which filter to toggle')
-    @app_commands.choices(filter=FILTER_CHOICES)
-    @app_commands.default_permissions(administrator=True)
-    async def automod_toggle(self, interaction: discord.Interaction, filter: app_commands.Choice[str]):
-        filter_cfg = self.get_filter(interaction.guild.id, filter.value)
-        new_state = not filter_cfg.get('enabled', False)
-        self.set_filter_setting(interaction.guild.id, filter.value, 'enabled', new_state)
-        await interaction.response.send_message(
-            f"{'✅' if new_state else '❌'} {FILTERS[filter.value]['label']} filter is now **{'enabled' if new_state else 'disabled'}**."
-        )
-        await self.on_filter_changed(interaction.guild, filter.value)
-
-    @automod.command(name='immunity', description='Configure immune roles and channels for a filter')
-    @app_commands.describe(
-        filter='Which filter to configure',
-        role='Role to toggle immunity (leave empty to view current)',
-        channel='Channel to toggle immunity (leave empty to view current)',
-    )
-    @app_commands.choices(filter=FILTER_CHOICES)
-    @app_commands.default_permissions(administrator=True)
-    async def automod_immunity(
-        self,
-        interaction: discord.Interaction,
-        filter: app_commands.Choice[str],
-        role: discord.Role = None,
-        channel: discord.TextChannel = None,
-    ):
-        filter_cfg = self.get_filter(interaction.guild.id, filter.value)
-        label = FILTERS[filter.value]['label']
-
-        if role is not None or channel is not None:
-            setting, target = ('immune_roles', role) if role is not None else ('immune_channels', channel)
-            current = list(filter_cfg.get(setting, []))
-            if str(target.id) in current:
-                current.remove(str(target.id))
-                text = f"Removed {target.mention} from {label} filter immunity."
-            else:
-                current.append(str(target.id))
-                text = f"Added {target.mention} to {label} filter immunity."
-            self.set_filter_setting(interaction.guild.id, filter.value, setting, current)
-            await interaction.response.send_message(text)
-            await self.on_filter_changed(interaction.guild, filter.value)
-            return
-
-        immune_roles = []
-        for rid in filter_cfg.get('immune_roles', []):
-            r = interaction.guild.get_role(int(rid))
-            immune_roles.append(r.mention if r else f"Unknown Role ({rid})")
-
-        immune_channels = []
-        for cid in filter_cfg.get('immune_channels', []):
-            c = interaction.guild.get_channel(int(cid))
-            immune_channels.append(c.mention if c else f"Unknown Channel ({cid})")
-
-        embed = discord.Embed(
-            title=f"{label} Immunity Settings",
-            colour=0x3498DB,
-        )
-        embed.add_field(
-            name="Immune Roles",
-            value='\n'.join(immune_roles) if immune_roles else '*None*',
-            inline=False,
-        )
-        embed.add_field(
-            name="Immune Channels",
-            value='\n'.join(immune_channels) if immune_channels else '*None*',
-            inline=False,
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 # ── Status Panel UI ────────────────────────────────────────────────────────────

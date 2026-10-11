@@ -53,7 +53,7 @@ COG_DISPLAY_INFO = {
         "summary": "Automatic content filtering and moderation actions",
         "setup": (
             "**Setup Guide**\n"
-            "1. `/automod status`  opens the settings panel. Everything is set from there: pick a filter to enable it, change its limits and timeouts, and choose immune roles and channels.\n"
+            "1. `/automod`  opens the settings panel. Everything is set from there: pick a filter to enable it, change its limits and timeouts, and choose immune roles and channels.\n"
             "2. Pick a mod log channel on the panel's front page so you can see what AutoMod does.\n"
             "3. Language filter: add banned words to `data/banned_words.txt`.\n"
             "4. Malicious links: add `VIRUSTOTAL_API_KEY` to `.env`, pick a report channel in the panel and edit `data/link_whitelist.txt` if needed."
